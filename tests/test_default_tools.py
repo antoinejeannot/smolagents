@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2024 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +56,7 @@ class PythonInterpreterToolTester(unittest.TestCase, ToolTesterMixin):
         inputs = ["2 * 2"]
         _inputs = []
 
-        for _input, expected_input in zip(inputs, self.tool.inputs.values()):
+        for _input, expected_input in zip(inputs, self.tool.inputs.values(), strict=False):
             input_type = expected_input["type"]
             if isinstance(input_type, list):
                 _inputs.append([_AGENT_TYPE_MAPPING[_input_type](_input) for _input_type in input_type])

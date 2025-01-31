@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -16,7 +15,7 @@
 # limitations under the License.
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .agent_types import AgentAudio
 from .local_python_executor import (
@@ -30,7 +29,7 @@ from .tools import PipelineTool, Tool
 @dataclass
 class PreTool:
     name: str
-    inputs: Dict[str, str]
+    inputs: dict[str, str]
     output_type: type
     task: str
     description: str
@@ -144,7 +143,7 @@ class GoogleSearchTool(Tool):
 
         self.serpapi_key = os.getenv("SERPAPI_API_KEY")
 
-    def forward(self, query: str, filter_year: Optional[int] = None) -> str:
+    def forward(self, query: str, filter_year: int | None = None) -> str:
         import requests
 
         if self.serpapi_key is None:

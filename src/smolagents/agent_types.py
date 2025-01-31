@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2024 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,7 +91,7 @@ class AgentImage(AgentType, ImageType):
             self._raw = value
         elif isinstance(value, bytes):
             self._raw = Image.open(BytesIO(value))
-        elif isinstance(value, (str, pathlib.Path)):
+        elif isinstance(value, str | pathlib.Path):
             self._path = value
         elif is_torch_available():
             import torch
@@ -184,7 +183,7 @@ class AgentAudio(AgentType, str):
         self._tensor = None
 
         self.samplerate = samplerate
-        if isinstance(value, (str, pathlib.Path)):
+        if isinstance(value, str | pathlib.Path):
             self._path = value
         elif is_torch_available() and isinstance(value, torch.Tensor):
             self._tensor = value

@@ -1,6 +1,7 @@
+import builtins
 from dataclasses import asdict, dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, List, TypedDict, Union
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from smolagents.models import ChatMessage, MessageRole
 from smolagents.monitoring import AgentLogger
@@ -42,14 +43,14 @@ class MemoryStep:
     def dict(self):
         return asdict(self)
 
-    def to_messages(self, **kwargs) -> List[Dict[str, Any]]:
+    def to_messages(self, **kwargs) -> list[builtins.dict[str, Any]]:
         raise NotImplementedError
 
 
 @dataclass
 class ActionStep(MemoryStep):
-    model_input_messages: List[Message] | None = None
-    tool_calls: List[ToolCall] | None = None
+    model_input_messages: list[Message] | None = None
+    tool_calls: list[ToolCall] | None = None
     start_time: float | None = None
     end_time: float | None = None
     step_number: int | None = None
@@ -58,7 +59,7 @@ class ActionStep(MemoryStep):
     model_output_message: ChatMessage = None
     model_output: str | None = None
     observations: str | None = None
-    observations_images: List[str] | None = None
+    observations_images: list[str] | None = None
     action_output: Any = None
 
     def dict(self):
@@ -77,7 +78,7 @@ class ActionStep(MemoryStep):
             "action_output": make_json_serializable(self.action_output),
         }
 
-    def to_messages(self, summary_mode: bool = False, show_model_input_messages: bool = False) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False, show_model_input_messages: bool = False) -> list[Message]:
         messages = []
         if self.model_input_messages is not None and show_model_input_messages:
             messages.append(Message(role=MessageRole.SYSTEM, content=self.model_input_messages))
@@ -143,13 +144,13 @@ class ActionStep(MemoryStep):
 
 @dataclass
 class PlanningStep(MemoryStep):
-    model_input_messages: List[Message]
+    model_input_messages: list[Message]
     model_output_message_facts: ChatMessage
     facts: str
     model_output_message_plan: ChatMessage
     plan: str
 
-    def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
+    def to_messages(self, summary_mode: bool, **kwargs) -> list[Message]:
         messages = []
         messages.append(
             Message(
@@ -169,9 +170,9 @@ class PlanningStep(MemoryStep):
 @dataclass
 class TaskStep(MemoryStep):
     task: str
-    task_images: List[str] | None = None
+    task_images: list[str] | None = None
 
-    def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False, **kwargs) -> list[Message]:
         content = [{"type": "text", "text": f"New task:\n{self.task}"}]
         if self.task_images:
             for image in self.task_images:
@@ -184,7 +185,7 @@ class TaskStep(MemoryStep):
 class SystemPromptStep(MemoryStep):
     system_prompt: str
 
-    def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False, **kwargs) -> list[Message]:
         if summary_mode:
             return []
         return [Message(role=MessageRole.SYSTEM, content=[{"type": "text", "text": self.system_prompt.strip()}])]
@@ -193,7 +194,7 @@ class SystemPromptStep(MemoryStep):
 class AgentMemory:
     def __init__(self, system_prompt: str):
         self.system_prompt = SystemPromptStep(system_prompt=system_prompt)
-        self.steps: List[Union[TaskStep, ActionStep, PlanningStep]] = []
+        self.steps: list[TaskStep | ActionStep | PlanningStep] = []
 
     def reset(self):
         self.steps = []

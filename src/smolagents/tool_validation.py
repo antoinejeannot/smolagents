@@ -1,7 +1,6 @@
 import ast
 import builtins
 import inspect
-from typing import Set
 
 from .utils import BASE_BUILTIN_MODULES, get_source
 
@@ -16,7 +15,7 @@ class MethodChecker(ast.NodeVisitor):
     - contains no local imports (e.g. numpy is ok but local_script is not)
     """
 
-    def __init__(self, class_attributes: Set[str], check_imports: bool = True):
+    def __init__(self, class_attributes: set[str], check_imports: bool = True):
         self.undefined_names = set()
         self.imports = {}
         self.from_imports = {}
@@ -173,10 +172,7 @@ def validate_tool_attributes(cls, check_imports: bool = True) -> None:
                     self.class_attributes.add(target.id)
 
             # Check if the assignment is more complex than simple literals
-            if not all(
-                isinstance(val, (ast.Str, ast.Num, ast.Constant, ast.Dict, ast.List, ast.Set))
-                for val in ast.walk(node.value)
-            ):
+            if not all(isinstance(val, ast.Constant | ast.Dict | ast.List | ast.Set) for val in ast.walk(node.value)):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         self.complex_attributes.add(target.id)
