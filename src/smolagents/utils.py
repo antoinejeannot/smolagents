@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -25,7 +24,7 @@ import textwrap
 import types
 from functools import lru_cache
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
@@ -72,7 +71,7 @@ class AgentError(Exception):
         self.message = message
         logger.log(f"[bold red]{message}[/bold red]", level="ERROR")
 
-    def dict(self) -> Dict[str, str]:
+    def dict(self) -> dict[str, str]:
         return {"type": self.__class__.__name__, "message": str(self.message)}
 
 
@@ -104,7 +103,7 @@ def make_json_serializable(obj: Any) -> Any:
     """Recursive function to make objects JSON serializable"""
     if obj is None:
         return None
-    elif isinstance(obj, (str, int, float, bool)):
+    elif isinstance(obj, str | int | float | bool):
         # Try to parse string as JSON if it looks like a JSON object/array
         if isinstance(obj, str):
             try:
@@ -114,7 +113,7 @@ def make_json_serializable(obj: Any) -> Any:
             except json.JSONDecodeError:
                 pass
         return obj
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, list | tuple):
         return [make_json_serializable(item) for item in obj]
     elif isinstance(obj, dict):
         return {str(k): make_json_serializable(v) for k, v in obj.items()}
@@ -126,7 +125,7 @@ def make_json_serializable(obj: Any) -> Any:
         return str(obj)
 
 
-def parse_json_blob(json_blob: str) -> Dict[str, str]:
+def parse_json_blob(json_blob: str) -> dict[str, str]:
     try:
         first_accolade_index = json_blob.find("{")
         last_accolade_index = [a.start() for a in list(re.finditer("}", json_blob))][-1]
@@ -138,14 +137,14 @@ def parse_json_blob(json_blob: str) -> Dict[str, str]:
         if json_blob[place - 1 : place + 2] == "},\n":
             raise ValueError(
                 "JSON is invalid: you probably tried to provide multiple tool calls in one action. PROVIDE ONLY ONE TOOL CALL."
-            )
+            ) from e
         raise ValueError(
             f"The JSON blob you used is invalid due to the following error: {e}.\n"
             f"JSON blob was: {json_blob}, decoding failed on that specific part of the blob:\n"
             f"'{json_blob[place - 4 : place + 5]}'."
-        )
+        ) from e
     except Exception as e:
-        raise ValueError(f"Error in parsing the JSON blob: {e}")
+        raise ValueError(f"Error in parsing the JSON blob: {e}") from e
 
 
 def parse_code_blobs(code_blob: str) -> str:
@@ -180,7 +179,7 @@ Code:
     return "\n\n".join(match.strip() for match in matches)
 
 
-def parse_json_tool_call(json_blob: str) -> Tuple[str, Union[str, None]]:
+def parse_json_tool_call(json_blob: str) -> tuple[str, str | None]:
     json_blob = json_blob.replace("```json", "").replace("```", "")
     tool_call = parse_json_blob(json_blob)
     tool_name_key, tool_arguments_key = None, None
@@ -312,7 +311,7 @@ def instance_to_source(instance, base_cls=None):
         )
     }
 
-    for name, method in methods.items():
+    for method in methods.values():
         method_source = get_source(method)
         # Clean up the indentation
         method_lines = method_source.split("\n")
@@ -389,12 +388,12 @@ def get_source(obj) -> str:
 
         tree = ast.parse(all_cells)
         for node in ast.walk(tree):
-            if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name == obj.__name__:
+            if isinstance(node, ast.ClassDef | ast.FunctionDef) and node.name == obj.__name__:
                 return textwrap.dedent("\n".join(all_cells.split("\n")[node.lineno - 1 : node.end_lineno])).strip()
         raise ValueError(f"Could not find source code for {obj.__name__} in IPython history")
-    except ImportError:
+    except ImportError as e:
         # IPython is not available, let's just raise the original inspect error
-        raise inspect_error
+        raise inspect_error from e
     except ValueError as e:
         # IPython is available but we couldn't find the source code, let's raise the error
         raise e from inspect_error

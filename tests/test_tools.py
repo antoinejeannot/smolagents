@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2024 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import mcp
@@ -37,7 +36,7 @@ if is_vision_available():
     from PIL import Image
 
 
-def create_inputs(tool_inputs: Dict[str, Dict[Union[str, type], str]]):
+def create_inputs(tool_inputs: dict[str, dict[str | type, str]]):
     inputs = {}
 
     for input_name, input_desc in tool_inputs.items():
@@ -56,11 +55,11 @@ def create_inputs(tool_inputs: Dict[str, Dict[Union[str, type], str]]):
 
 
 def output_type(output):
-    if isinstance(output, (str, AgentText)):
+    if isinstance(output, str | AgentText):
         return "string"
-    elif isinstance(output, (Image.Image, AgentImage)):
+    elif isinstance(output, Image.Image | AgentImage):
         return "image"
-    elif isinstance(output, (torch.Tensor, AgentAudio)):
+    elif isinstance(output, torch.Tensor | AgentAudio):
         return "audio"
     else:
         raise TypeError(f"Invalid output: {output}")
@@ -290,7 +289,7 @@ class ToolTests(unittest.TestCase):
                     },
                 }
 
-                def forward(self, location: str, celsius: Optional[bool] = False) -> str:
+                def forward(self, location: str, celsius: bool | None = False) -> str:
                     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
 
             GetWeatherTool()
@@ -298,7 +297,7 @@ class ToolTests(unittest.TestCase):
 
     def test_tool_from_decorator_optional_args(self):
         @tool
-        def get_weather(location: str, celsius: Optional[bool] = False) -> str:
+        def get_weather(location: str, celsius: bool | None = False) -> str:
             """
             Get weather in the next days at given location.
             Secretly this tool does not care about the location, it hates the weather everywhere.
@@ -328,7 +327,7 @@ class ToolTests(unittest.TestCase):
                 }
                 output_type = "string"
 
-                def forward(self, location: str, celsius: Optional[bool] = False) -> str:
+                def forward(self, location: str, celsius: bool | None = False) -> str:
                     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
 
             GetWeatherTool()
@@ -407,7 +406,7 @@ class ToolTests(unittest.TestCase):
 
     def test_tool_supports_array(self):
         @tool
-        def get_weather(locations: List[str], months: Optional[Tuple[str, str]] = None) -> Dict[str, float]:
+        def get_weather(locations: list[str], months: tuple[str, str] | None = None) -> dict[str, float]:
             """
             Get weather in the next days at given locations.
 

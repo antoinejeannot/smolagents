@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -19,7 +18,7 @@ import pickle
 import re
 import textwrap
 from io import BytesIO
-from typing import Any, List, Tuple
+from typing import Any
 
 from PIL import Image
 
@@ -37,13 +36,13 @@ except ModuleNotFoundError:
 
 
 class E2BExecutor:
-    def __init__(self, additional_imports: List[str], tools: List[Tool], logger):
+    def __init__(self, additional_imports: list[str], tools: list[Tool], logger):
         try:
             from e2b_code_interpreter import Sandbox
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
             raise ModuleNotFoundError(
                 """Please install 'e2b' extra to use E2BExecutor: `pip install "smolagents[e2b]"`"""
-            )
+            ) from e
 
         self.custom_tools = {}
         self.final_answer = False
@@ -105,7 +104,7 @@ class E2BExecutor:
             raise ValueError(logs)
         return execution
 
-    def __call__(self, code_action: str, additional_args: dict) -> Tuple[Any, Any]:
+    def __call__(self, code_action: str, additional_args: dict) -> tuple[Any, Any]:
         if len(additional_args) > 0:
             # Pickle additional_args to server
             import tempfile

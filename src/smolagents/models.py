@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -21,7 +20,7 @@ import random
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from huggingface_hub import InferenceClient
 from huggingface_hub.utils import is_torch_available
@@ -60,7 +59,7 @@ def get_dict_from_nested_dataclasses(obj, ignore_key=None):
 class ChatMessageToolCallDefinition:
     arguments: Any
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
     @classmethod
     def from_hf_api(cls, tool_call_definition) -> "ChatMessageToolCallDefinition":
@@ -89,9 +88,9 @@ class ChatMessageToolCall:
 @dataclass
 class ChatMessage:
     role: str
-    content: Optional[str] = None
-    tool_calls: Optional[List[ChatMessageToolCall]] = None
-    raw: Optional[Any] = None  # Stores the raw output from the API
+    content: str | None = None
+    tool_calls: list[ChatMessageToolCall] | None = None
+    raw: Any | None = None  # Stores the raw output from the API
 
     def model_dump_json(self):
         return json.dumps(get_dict_from_nested_dataclasses(self, ignore_key="raw"))
@@ -119,7 +118,7 @@ class ChatMessage:
         return json.dumps(get_dict_from_nested_dataclasses(self))
 
 
-def parse_json_if_needed(arguments: Union[str, dict]) -> Union[str, dict]:
+def parse_json_if_needed(arguments: str | dict) -> str | dict:
     if isinstance(arguments, dict):
         return arguments
     else:
@@ -153,7 +152,7 @@ tool_role_conversions = {
 }
 
 
-def get_tool_json_schema(tool: Tool) -> Dict:
+def get_tool_json_schema(tool: Tool) -> dict:
     properties = deepcopy(tool.inputs)
     required = []
     for key, value in properties.items():
@@ -175,7 +174,7 @@ def get_tool_json_schema(tool: Tool) -> Dict:
     }
 
 
-def remove_stop_sequences(content: str, stop_sequences: List[str]) -> str:
+def remove_stop_sequences(content: str, stop_sequences: list[str]) -> str:
     for stop_seq in stop_sequences:
         if content[-len(stop_seq) :] == stop_seq:
             content = content[: -len(stop_seq)]
@@ -183,11 +182,11 @@ def remove_stop_sequences(content: str, stop_sequences: List[str]) -> str:
 
 
 def get_clean_message_list(
-    message_list: List[Dict[str, str]],
-    role_conversions: Dict[MessageRole, MessageRole] = {},
+    message_list: list[dict[str, str]],
+    role_conversions: dict[MessageRole, MessageRole] | None = None,
     convert_images_to_image_urls: bool = False,
     flatten_messages_as_text: bool = False,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """
     Subsequent messages with the same role will be concatenated to a single message.
     output_message_list is a list of messages that will be used to generate the final message that is chat template compatible with transformers LLM chat template.
@@ -199,6 +198,7 @@ def get_clean_message_list(
         flatten_messages_as_text (`bool`, default `False`): Whether to flatten messages as text.
     """
     output_message_list = []
+    role_conversions = role_conversions or {}
     message_list = deepcopy(message_list)  # Avoid modifying the original list
     for message in message_list:
         role = message["role"]
@@ -245,15 +245,15 @@ class Model:
 
     def _prepare_completion_kwargs(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        tools_to_call_from: Optional[List[Tool]] = None,
-        custom_role_conversions: Optional[Dict[str, str]] = None,
+        messages: list[dict[str, str]],
+        stop_sequences: list[str] | None = None,
+        grammar: str | None = None,
+        tools_to_call_from: list[Tool] | None = None,
+        custom_role_conversions: dict[str, str] | None = None,
         convert_images_to_image_urls: bool = False,
         flatten_messages_as_text: bool = False,
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         """
         Prepare parameters required for model invocation, handling parameter priorities.
 
@@ -296,7 +296,7 @@ class Model:
 
         return completion_kwargs
 
-    def get_token_counts(self) -> Dict[str, int]:
+    def get_token_counts(self) -> dict[str, int]:
         return {
             "input_token_count": self.last_input_token_count,
             "output_token_count": self.last_output_token_count,
@@ -304,10 +304,10 @@ class Model:
 
     def __call__(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        tools_to_call_from: Optional[List[Tool]] = None,
+        messages: list[dict[str, str]],
+        stop_sequences: list[str] | None = None,
+        grammar: str | None = None,
+        tools_to_call_from: list[Tool] | None = None,
         **kwargs,
     ) -> ChatMessage:
         """Process the input messages and return the model's response.
@@ -371,9 +371,9 @@ class HfApiModel(Model):
     def __init__(
         self,
         model_id: str = "Qwen/Qwen2.5-Coder-32B-Instruct",
-        provider: Optional[str] = None,
-        token: Optional[str] = None,
-        timeout: Optional[int] = 120,
+        provider: str | None = None,
+        token: str | None = None,
+        timeout: int | None = 120,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -385,10 +385,10 @@ class HfApiModel(Model):
 
     def __call__(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        tools_to_call_from: Optional[List[Tool]] = None,
+        messages: list[dict[str, str]],
+        stop_sequences: list[str] | None = None,
+        grammar: str | None = None,
+        tools_to_call_from: list[Tool] | None = None,
         **kwargs,
     ) -> ChatMessage:
         completion_kwargs = self._prepare_completion_kwargs(
@@ -451,9 +451,9 @@ class TransformersModel(Model):
 
     def __init__(
         self,
-        model_id: Optional[str] = None,
-        device_map: Optional[str] = None,
-        torch_dtype: Optional[str] = None,
+        model_id: str | None = None,
+        device_map: str | None = None,
+        torch_dtype: str | None = None,
         trust_remote_code: bool = False,
         **kwargs,
     ):
@@ -498,11 +498,11 @@ class TransformersModel(Model):
             self.tokenizer = AutoTokenizer.from_pretrained(default_model_id)
             self.model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device_map, torch_dtype=torch_dtype)
 
-    def make_stopping_criteria(self, stop_sequences: List[str], tokenizer) -> "StoppingCriteriaList":
+    def make_stopping_criteria(self, stop_sequences: list[str], tokenizer) -> "StoppingCriteriaList":
         from transformers import StoppingCriteria, StoppingCriteriaList
 
         class StopOnStrings(StoppingCriteria):
-            def __init__(self, stop_strings: List[str], tokenizer):
+            def __init__(self, stop_strings: list[str], tokenizer):
                 self.stop_strings = stop_strings
                 self.tokenizer = tokenizer
                 self.stream = ""
@@ -521,11 +521,11 @@ class TransformersModel(Model):
 
     def __call__(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        tools_to_call_from: Optional[List[Tool]] = None,
-        images: Optional[List[Image.Image]] = None,
+        messages: list[dict[str, str]],
+        stop_sequences: list[str] | None = None,
+        grammar: str | None = None,
+        tools_to_call_from: list[Tool] | None = None,
+        images: list[Image.Image] | None = None,
         **kwargs,
     ) -> ChatMessage:
         completion_kwargs = self._prepare_completion_kwargs(
@@ -614,7 +614,7 @@ class TransformersModel(Model):
             try:
                 parsed_output = json.loads(output)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Tool call '{output}' has an invalid JSON structure: {e}")
+                raise ValueError(f"Tool call '{output}' has an invalid JSON structure: {e}") from e
             tool_name = parsed_output.get("name")
             tool_arguments = parsed_output.get("arguments")
             return ChatMessage(
@@ -654,10 +654,10 @@ class LiteLLMModel(Model):
     ):
         try:
             import litellm
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
             raise ModuleNotFoundError(
                 "Please install 'litellm' extra to use LiteLLMModel: `pip install 'smolagents[litellm]'`"
-            )
+            ) from e
 
         super().__init__(**kwargs)
         self.model_id = model_id
@@ -668,10 +668,10 @@ class LiteLLMModel(Model):
 
     def __call__(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        tools_to_call_from: Optional[List[Tool]] = None,
+        messages: list[dict[str, str]],
+        stop_sequences: list[str] | None = None,
+        grammar: str | None = None,
+        tools_to_call_from: list[Tool] | None = None,
         **kwargs,
     ) -> ChatMessage:
         import litellm
@@ -726,11 +726,11 @@ class OpenAIServerModel(Model):
     def __init__(
         self,
         model_id: str,
-        api_base: Optional[str] = None,
-        api_key: Optional[str] = None,
-        organization: Optional[str] | None = None,
-        project: Optional[str] | None = None,
-        custom_role_conversions: Optional[Dict[str, str]] = None,
+        api_base: str | None = None,
+        api_key: str | None = None,
+        organization: str | None | None = None,
+        project: str | None | None = None,
+        custom_role_conversions: dict[str, str] | None = None,
         **kwargs,
     ):
         try:
@@ -752,10 +752,10 @@ class OpenAIServerModel(Model):
 
     def __call__(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        tools_to_call_from: Optional[List[Tool]] = None,
+        messages: list[dict[str, str]],
+        stop_sequences: list[str] | None = None,
+        grammar: str | None = None,
+        tools_to_call_from: list[Tool] | None = None,
         **kwargs,
     ) -> ChatMessage:
         completion_kwargs = self._prepare_completion_kwargs(
@@ -804,10 +804,10 @@ class AzureOpenAIServerModel(OpenAIServerModel):
     def __init__(
         self,
         model_id: str,
-        azure_endpoint: Optional[str] = None,
-        api_key: Optional[str] = None,
-        api_version: Optional[str] = None,
-        custom_role_conversions: Optional[Dict[str, str]] = None,
+        azure_endpoint: str | None = None,
+        api_key: str | None = None,
+        api_version: str | None = None,
+        custom_role_conversions: dict[str, str] | None = None,
         **kwargs,
     ):
         # read the api key manually, to avoid super().__init__() trying to use the wrong api_key (OPENAI_API_KEY)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -17,8 +16,9 @@
 import inspect
 import time
 from collections import deque
+from collections.abc import Callable, Generator
 from logging import getLogger
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any
 
 from rich.console import Group
 from rich.panel import Panel
@@ -79,11 +79,11 @@ from .tools import (
 logger = getLogger(__name__)
 
 
-def get_tool_descriptions(tools: Dict[str, Tool], tool_description_template: str) -> str:
+def get_tool_descriptions(tools: dict[str, Tool], tool_description_template: str) -> str:
     return "\n".join([get_tool_description_with_args(tool, tool_description_template) for tool in tools.values()])
 
 
-def format_prompt_with_tools(tools: Dict[str, Tool], prompt_template: str, tool_description_template: str) -> str:
+def format_prompt_with_tools(tools: dict[str, Tool], prompt_template: str, tool_description_template: str) -> str:
     tool_descriptions = get_tool_descriptions(tools, tool_description_template)
     prompt = prompt_template.replace("{{tool_descriptions}}", tool_descriptions)
     if "{{tool_names}}" in prompt:
@@ -94,7 +94,7 @@ def format_prompt_with_tools(tools: Dict[str, Tool], prompt_template: str, tool_
     return prompt
 
 
-def show_agents_descriptions(managed_agents: Dict):
+def show_agents_descriptions(managed_agents: dict):
     managed_agents_descriptions = """
 You can also give requests to team members.
 Calling a team member works the same as for calling a tool: simply, the only argument you can give in the call is 'request', a long string explaining your request.
@@ -108,7 +108,7 @@ Here is a list of the team members that you can call:"""
 def format_prompt_with_managed_agents_descriptions(
     prompt_template,
     managed_agents,
-    agent_descriptions_placeholder: Optional[str] = None,
+    agent_descriptions_placeholder: str | None = None,
 ) -> str:
     if agent_descriptions_placeholder is None:
         agent_descriptions_placeholder = "{{managed_agents_descriptions}}"
@@ -144,18 +144,18 @@ class MultiStepAgent:
 
     def __init__(
         self,
-        tools: List[Tool],
-        model: Callable[[List[Dict[str, str]]], ChatMessage],
-        system_prompt: Optional[str] = None,
-        tool_description_template: Optional[str] = None,
+        tools: list[Tool],
+        model: Callable[[list[dict[str, str]]], ChatMessage],
+        system_prompt: str | None = None,
+        tool_description_template: str | None = None,
         max_steps: int = 6,
-        tool_parser: Optional[Callable] = None,
+        tool_parser: Callable | None = None,
         add_base_tools: bool = False,
         verbosity_level: int = 1,
-        grammar: Optional[Dict[str, str]] = None,
-        managed_agents: Optional[List] = None,
-        step_callbacks: Optional[List[Callable]] = None,
-        planning_interval: Optional[int] = None,
+        grammar: dict[str, str] | None = None,
+        managed_agents: list | None = None,
+        step_callbacks: list[Callable] | None = None,
+        planning_interval: int | None = None,
     ):
         if system_prompt is None:
             system_prompt = CODE_SYSTEM_PROMPT
@@ -213,8 +213,8 @@ class MultiStepAgent:
 
     def write_memory_to_messages(
         self,
-        summary_mode: Optional[bool] = False,
-    ) -> List[Dict[str, str]]:
+        summary_mode: bool | None = False,
+    ) -> list[dict[str, str]]:
         """
         Reads past llm_outputs, actions, and observations or errors from the memory into a series of messages
         that can be used as input to the LLM. Adds a number of keywords (such as PLAN, error, etc) to help
@@ -225,7 +225,7 @@ class MultiStepAgent:
             messages.extend(memory_step.to_messages(summary_mode=summary_mode))
         return messages
 
-    def extract_action(self, model_output: str, split_token: str) -> Tuple[str, str]:
+    def extract_action(self, model_output: str, split_token: str) -> tuple[str, str]:
         """
         Parse action from the LLM output
 
@@ -239,14 +239,14 @@ class MultiStepAgent:
                 split[-2],
                 split[-1],
             )  # NOTE: using indexes starting from the end solves for when you have more than one split_token in the output
-        except Exception:
+        except Exception as e:
             raise AgentParsingError(
                 f"No '{split_token}' token provided in your output.\nYour output:\n{model_output}\n. Be sure to include an action, prefaced with '{split_token}'!",
                 self.logger,
-            )
+            ) from e
         return rationale.strip(), action.strip()
 
-    def provide_final_answer(self, task: str, images: Optional[list[str]]) -> str:
+    def provide_final_answer(self, task: str, images: list[str] | None) -> str:
         """
         Provide the final answer to the task, based on the logs of the agent's interactions.
 
@@ -303,7 +303,7 @@ class MultiStepAgent:
         except Exception as e:
             return f"Error in generating final LLM output:\n{e}"
 
-    def execute_tool_call(self, tool_name: str, arguments: Union[Dict[str, str], str]) -> Any:
+    def execute_tool_call(self, tool_name: str, arguments: dict[str, str] | str) -> Any:
         """
         Execute tool with the provided input and returns the result.
         This method replaces arguments with the actual values from the state if they refer to state variables.
@@ -342,15 +342,15 @@ class MultiStepAgent:
                     f"Error in tool call execution: {e}\nYou should only use this tool with a correct input.\n"
                     f"As a reminder, this tool's description is the following:\n{tool_description}"
                 )
-                raise AgentExecutionError(error_msg, self.logger)
+                raise AgentExecutionError(error_msg, self.logger) from e
             elif tool_name in self.managed_agents:
                 error_msg = (
                     f"Error in calling team member: {e}\nYou should only ask this team member with a correct request.\n"
                     f"As a reminder, this team member's description is the following:\n{available_tools[tool_name]}"
                 )
-                raise AgentExecutionError(error_msg, self.logger)
+                raise AgentExecutionError(error_msg, self.logger) from e
 
-    def step(self, log_entry: ActionStep) -> Union[None, Any]:
+    def step(self, log_entry: ActionStep) -> None | Any:
         """To be implemented in children classes. Should return either None if the step is not final."""
         pass
 
@@ -360,8 +360,8 @@ class MultiStepAgent:
         stream: bool = False,
         reset: bool = True,
         single_step: bool = False,
-        images: Optional[List[str]] = None,
-        additional_args: Optional[Dict] = None,
+        images: list[str] | None = None,
+        additional_args: dict | None = None,
     ):
         """
         Run the agent for the given task.
@@ -418,7 +418,7 @@ You have been provided with these additional arguments, that you can access usin
         # Outputs are returned only at the end as a string. We only look at the last step
         return deque(self._run(task=self.task, images=images), maxlen=1)[0]
 
-    def _run(self, task: str, images: List[str] | None = None) -> Generator[ActionStep | AgentType, None, None]:
+    def _run(self, task: str, images: list[str] | None = None) -> Generator[ActionStep | AgentType, None, None]:
         """
         Run the agent in streaming mode and returns a generator of all the steps.
 
@@ -651,10 +651,10 @@ class ToolCallingAgent(MultiStepAgent):
 
     def __init__(
         self,
-        tools: List[Tool],
-        model: Callable[[List[Dict[str, str]]], ChatMessage],
-        system_prompt: Optional[str] = None,
-        planning_interval: Optional[int] = None,
+        tools: list[Tool],
+        model: Callable[[list[dict[str, str]]], ChatMessage],
+        system_prompt: str | None = None,
+        planning_interval: int | None = None,
         **kwargs,
     ):
         if system_prompt is None:
@@ -667,7 +667,7 @@ class ToolCallingAgent(MultiStepAgent):
             **kwargs,
         )
 
-    def step(self, log_entry: ActionStep) -> Union[None, Any]:
+    def step(self, log_entry: ActionStep) -> None | Any:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
         Returns None if the step is not final.
@@ -770,14 +770,14 @@ class CodeAgent(MultiStepAgent):
 
     def __init__(
         self,
-        tools: List[Tool],
-        model: Callable[[List[Dict[str, str]]], ChatMessage],
-        system_prompt: Optional[str] = None,
-        grammar: Optional[Dict[str, str]] = None,
-        additional_authorized_imports: Optional[List[str]] = None,
-        planning_interval: Optional[int] = None,
+        tools: list[Tool],
+        model: Callable[[list[dict[str, str]]], ChatMessage],
+        system_prompt: str | None = None,
+        grammar: dict[str, str] | None = None,
+        additional_authorized_imports: list[str] | None = None,
+        planning_interval: int | None = None,
         use_e2b_executor: bool = False,
-        max_print_outputs_length: Optional[int] = None,
+        max_print_outputs_length: int | None = None,
         **kwargs,
     ):
         if system_prompt is None:
@@ -832,7 +832,7 @@ class CodeAgent(MultiStepAgent):
         )
         return self.system_prompt
 
-    def step(self, log_entry: ActionStep) -> Union[None, Any]:
+    def step(self, log_entry: ActionStep) -> None | Any:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
         Returns None if the step is not final.
@@ -867,7 +867,7 @@ class CodeAgent(MultiStepAgent):
             code_action = fix_final_answer_code(parse_code_blobs(model_output))
         except Exception as e:
             error_msg = f"Error in code parsing:\n{e}\nMake sure to provide correct code blobs."
-            raise AgentParsingError(error_msg, self.logger)
+            raise AgentParsingError(error_msg, self.logger) from e
 
         log_entry.tool_calls = [
             ToolCall(
@@ -900,7 +900,7 @@ class CodeAgent(MultiStepAgent):
                     "[bold red]Warning to user: Code execution failed due to an unauthorized import - Consider passing said import under `additional_authorized_imports` when initializing your CodeAgent.",
                     level=LogLevel.INFO,
                 )
-            raise AgentExecutionError(error_msg, self.logger)
+            raise AgentExecutionError(error_msg, self.logger) from e
 
         truncated_output = truncate_content(str(output))
         observation += "Last output from code snippet:\n" + truncated_output
@@ -936,9 +936,9 @@ class ManagedAgent:
         agent,
         name,
         description,
-        additional_prompting: Optional[str] = None,
+        additional_prompting: str | None = None,
         provide_run_summary: bool = False,
-        managed_agent_prompt: Optional[str] = None,
+        managed_agent_prompt: str | None = None,
     ):
         self.agent = agent
         self.name = name

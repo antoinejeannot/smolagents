@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2024 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from typing import Optional, Tuple
 
 from smolagents._function_type_hints_utils import get_json_schema
 
 
 class AgentTextTests(unittest.TestCase):
     def test_return_none(self):
-        def fn(x: int, y: Optional[Tuple[str, str, float]] = None) -> None:
+        def fn(x: int, y: tuple[str, str, float] | None = None) -> None:
             """
             Test function
             Args:

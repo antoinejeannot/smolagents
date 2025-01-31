@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -23,10 +22,10 @@ import os
 import sys
 import tempfile
 import textwrap
+from collections.abc import Callable
 from contextlib import contextmanager
 from functools import lru_cache, wraps
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
 
 from huggingface_hub import (
     create_repo,
@@ -104,7 +103,7 @@ class Tool:
 
     name: str
     description: str
-    inputs: Dict[str, Dict[str, Union[str, type, bool]]]
+    inputs: dict[str, dict[str, str | type | bool]]
     output_type: str
 
     def __init__(self, *args, **kwargs):
@@ -143,10 +142,7 @@ class Tool:
         assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
 
         # Validate forward function signature, except for Tools that use a "generic" signature (PipelineTool, SpaceToolWrapper, LangChainToolWrapper)
-        if not (
-            hasattr(self, "skip_forward_signature_validation")
-            and getattr(self, "skip_forward_signature_validation") is True
-        ):
+        if not (hasattr(self, "skip_forward_signature_validation") and self.skip_forward_signature_validation is True):
             signature = inspect.signature(self.forward)
 
             if not set(signature.parameters.keys()) == set(self.inputs.keys()):
@@ -305,8 +301,8 @@ class Tool:
         self,
         repo_id: str,
         commit_message: str = "Upload tool",
-        private: Optional[bool] = None,
-        token: Optional[Union[bool, str]] = None,
+        private: bool | None = None,
+        token: bool | str | None = None,
         create_pr: bool = False,
     ) -> str:
         """
@@ -348,7 +344,7 @@ class Tool:
         with tempfile.TemporaryDirectory() as work_dir:
             # Save all files.
             self.save(work_dir)
-            with open(work_dir + "/tool.py", "r") as f:
+            with open(work_dir + "/tool.py") as f:
                 print("\n".join(f.readlines()))
             logger.info(f"Uploading the following files to {repo_id}: {','.join(os.listdir(work_dir))}")
             return upload_folder(
@@ -364,7 +360,7 @@ class Tool:
     def from_hub(
         cls,
         repo_id: str,
-        token: Optional[str] = None,
+        token: str | None = None,
         trust_remote_code: bool = False,
         **kwargs,
     ):
@@ -449,8 +445,8 @@ class Tool:
         space_id: str,
         name: str,
         description: str,
-        api_name: Optional[str] = None,
-        token: Optional[str] = None,
+        api_name: str | None = None,
+        token: str | None = None,
     ):
         """
         Creates a [`Tool`] from a Space given its id on the Hub.
@@ -498,8 +494,8 @@ class Tool:
                 space_id: str,
                 name: str,
                 description: str,
-                api_name: Optional[str] = None,
-                token: Optional[str] = None,
+                api_name: str | None = None,
+                token: str | None = None,
             ):
                 self.name = name
                 self.description = description
@@ -516,8 +512,8 @@ class Tool:
 
                 try:
                     space_description_api = space_description[api_name]
-                except KeyError:
-                    raise KeyError(f"Could not find specified {api_name=} among available api names.")
+                except KeyError as e:
+                    raise KeyError(f"Could not find specified {api_name=} among available api names.") from e
 
                 self.inputs = {}
                 for parameter in space_description_api["parameters"]:
@@ -639,7 +635,7 @@ DEFAULT_TOOL_DESCRIPTION_TEMPLATE = """
 """
 
 
-def get_tool_description_with_args(tool: Tool, description_template: Optional[str] = None) -> str:
+def get_tool_description_with_args(tool: Tool, description_template: str | None = None) -> str:
     if description_template is None:
         description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
     compiled_template = compile_jinja_template(description_template)
@@ -655,8 +651,8 @@ def compile_jinja_template(template):
         import jinja2
         from jinja2.exceptions import TemplateError
         from jinja2.sandbox import ImmutableSandboxedEnvironment
-    except ImportError:
-        raise ImportError("template requires jinja2 to be installed.")
+    except ImportError as e:
+        raise ImportError("template requires jinja2 to be installed.") from e
 
     if version.parse(jinja2.__version__) < version.parse("3.1.0"):
         raise ImportError(f"template requires jinja2>=3.1.0 to be installed. Your version is {jinja2.__version__}.")
@@ -679,8 +675,8 @@ def launch_gradio_demo(tool: Tool):
     """
     try:
         import gradio as gr
-    except ImportError:
-        raise ImportError("Gradio should be installed in order to launch a gradio demo.")
+    except ImportError as e:
+        raise ImportError("Gradio should be installed in order to launch a gradio demo.") from e
 
     TYPE_TO_COMPONENT_CLASS_MAPPING = {
         "image": gr.Image,
@@ -717,8 +713,8 @@ def launch_gradio_demo(tool: Tool):
 
 def load_tool(
     task_or_repo_id,
-    model_repo_id: Optional[str] = None,
-    token: Optional[str] = None,
+    model_repo_id: str | None = None,
+    token: str | None = None,
     trust_remote_code: bool = False,
     **kwargs,
 ):
@@ -789,14 +785,14 @@ class ToolCollection:
     For example and usage, see: [`ToolCollection.from_hub`] and [`ToolCollection.from_mcp`]
     """
 
-    def __init__(self, tools: List[Tool]):
+    def __init__(self, tools: list[Tool]):
         self.tools = tools
 
     @classmethod
     def from_hub(
         cls,
         collection_slug: str,
-        token: Optional[str] = None,
+        token: str | None = None,
         trust_remote_code: bool = False,
     ) -> "ToolCollection":
         """Loads a tool collection from the Hub.
@@ -866,10 +862,10 @@ class ToolCollection:
         try:
             from mcpadapt.core import MCPAdapt
             from mcpadapt.smolagents_adapter import SmolAgentsAdapter
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 """Please install 'mcp' extra to use ToolCollection.from_mcp: `pip install "smolagents[mcp]"`."""
-            )
+            ) from e
 
         with MCPAdapt(server_parameters, SmolAgentsAdapter()) as tools:
             yield cls(tools)
@@ -892,7 +888,7 @@ def tool(tool_function: Callable) -> Tool:
             self,
             name: str,
             description: str,
-            inputs: Dict[str, Dict[str, str]],
+            inputs: dict[str, dict[str, str]],
             output_type: str,
             function: Callable,
         ):

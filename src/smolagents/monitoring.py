@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 # Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
@@ -16,7 +15,6 @@
 # limitations under the License.
 import json
 from enum import IntEnum
-from typing import List, Optional
 
 from rich import box
 from rich.console import Console, Group
@@ -91,7 +89,7 @@ class AgentLogger:
         if level <= self.level:
             self.console.print(*args, **kwargs)
 
-    def log_markdown(self, content: str, title: Optional[str] = None, level=LogLevel.INFO, style=YELLOW_HEX) -> None:
+    def log_markdown(self, content: str, title: str | None = None, level=LogLevel.INFO, style=YELLOW_HEX) -> None:
         markdown_content = Syntax(
             content,
             lexer="markdown",
@@ -151,7 +149,7 @@ class AgentLogger:
             level=level,
         )
 
-    def log_messages(self, messages: List) -> None:
+    def log_messages(self, messages: list) -> None:
         messages_as_string = "\n".join([json.dumps(dict(message), indent=4) for message in messages])
         self.log(
             Syntax(

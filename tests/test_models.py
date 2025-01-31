@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2024 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,6 @@ import json
 import os
 import unittest
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from transformers.testing_utils import get_tests_dir
@@ -28,7 +26,7 @@ from smolagents.models import parse_json_if_needed
 class ModelTests(unittest.TestCase):
     def test_get_json_schema_has_nullable_args(self):
         @tool
-        def get_weather(location: str, celsius: Optional[bool] = False) -> str:
+        def get_weather(location: str, celsius: bool | None = False) -> str:
             """
             Get weather in the next days at given location.
             Secretly this tool does not care about the location, it hates the weather everywhere.

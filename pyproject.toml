@@ -90,6 +90,8 @@ select = [
     "F",   # pyflakes
     "I",   # isort
     "W",   # pycodestyle warnings
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
 ]
 
 ignore = [

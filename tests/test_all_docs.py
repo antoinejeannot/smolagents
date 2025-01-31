@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2024 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +20,6 @@ import subprocess
 import tempfile
 import traceback
 from pathlib import Path
-from typing import List
 
 import pytest
 from dotenv import load_dotenv
@@ -31,7 +29,7 @@ class SubprocessCallException(Exception):
     pass
 
 
-def run_command(command: List[str], return_stdout=False, env=None):
+def run_command(command: list[str], return_stdout=False, env=None):
     """
     Runs command with subprocess.check_output and returns stdout if requested.
     Properly captures and handles errors during command execution.
@@ -59,14 +57,14 @@ class DocCodeExtractor:
     """Handles extraction and validation of Python code from markdown files."""
 
     @staticmethod
-    def extract_python_code(content: str) -> List[str]:
+    def extract_python_code(content: str) -> list[str]:
         """Extract Python code blocks from markdown content."""
         pattern = r"```(?:python|py)\n(.*?)\n```"
         matches = re.finditer(pattern, content, re.DOTALL)
         return [match.group(1).strip() for match in matches]
 
     @staticmethod
-    def create_test_script(code_blocks: List[str], tmp_dir: str) -> Path:
+    def create_test_script(code_blocks: list[str], tmp_dir: str) -> Path:
         """Create a temporary Python script from code blocks."""
         combined_code = "\n\n".join(code_blocks)
         assert len(combined_code) > 0, "Code is empty!"
@@ -105,7 +103,7 @@ class TestDocs:
     @pytest.mark.timeout(100)
     def test_single_doc(self, doc_path: Path):
         """Test a single documentation file."""
-        with open(doc_path, "r", encoding="utf-8") as f:
+        with open(doc_path, encoding="utf-8") as f:
             content = f.read()
 
         code_blocks = self.extractor.extract_python_code(content)
@@ -129,7 +127,7 @@ class TestDocs:
             pytest.skip(f"No Python code blocks found in {doc_path.name}")
 
         # Validate syntax of each block individually by parsing it
-        for i, block in enumerate(code_blocks, 1):
+        for block in code_blocks:
             ast.parse(block)
 
         # Create and execute test script
